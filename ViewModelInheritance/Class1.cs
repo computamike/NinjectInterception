@@ -7,7 +7,13 @@ using NUnit.Framework;
 using Ninject;
 using Ninject.Extensions.Interception;
 using Ninject.Extensions.Interception.Infrastructure.Language;
-
+using System.Collections;
+using System.Web.Mvc;
+using Moq;
+using System.IO;
+using System.Web;
+using System.Web.Routing;
+using System.Web.Mvc.Html;
 
 
 namespace ViewModelInheritance
@@ -20,8 +26,19 @@ namespace ViewModelInheritance
         {
             return DateTime.Now;
         }
-    }
+        public virtual List<thing> things { get; set; }
+        public virtual VM2 Level2 { get; set; }
 
+    }
+    public class VM2
+    {
+        public virtual string Level2String { get; set; }
+        public virtual VM3 Level3 { get; set; }
+    }
+    public class VM3
+    {
+        public virtual string Level3String { get; set; }
+    }
     public class PageObject : ContextBoundObject
     {
         
@@ -45,15 +62,175 @@ namespace ViewModelInheritance
         }
     }
 
+    public class FakeList<T> : IList<T>,  IList, IReadOnlyList<T>
+    {
+        private List<T> thingies = new List<T>();
+        public int IndexOf(T item)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Insert(int index, T item)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void RemoveAt(int index)
+        {
+            throw new NotImplementedException();
+        }
+
+        public T this[int index]
+        {
+            get
+            {
+                throw new NotImplementedException();
+            }
+            set
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public void Add(T item)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Clear()
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool Contains(T item)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void CopyTo(T[] array, int arrayIndex)
+        {
+             thingies.CopyTo(array ,arrayIndex);
+            
+        }
+
+        public int Count
+        {
+            get { return 99; }
+        }
+
+        public bool IsReadOnly
+        {
+            get { throw new NotImplementedException(); }
+        }
+
+        public bool Remove(T item)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IEnumerator<T> GetEnumerator()
+        {
+            throw new NotImplementedException();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            throw new NotImplementedException();
+        }
+
+        public int Add(object value)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool Contains(object value)
+        {
+            throw new NotImplementedException();
+        }
+
+        public int IndexOf(object value)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Insert(int index, object value)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool IsFixedSize
+        {
+            get { throw new NotImplementedException(); }
+        }
+
+        public void Remove(object value)
+        {
+            throw new NotImplementedException();
+        }
+
+        object IList.this[int index]
+        {
+            get
+            {
+                throw new NotImplementedException();
+            }
+            set
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public void CopyTo(Array array, int index)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool IsSynchronized
+        {
+            get { throw new NotImplementedException(); }
+        }
+
+        public object SyncRoot
+        {
+            get { throw new NotImplementedException(); }
+        }
+    }
+
+ 
     [TestFixture]
     public class Tests
     {
+ 
+        [Test]
+        public void TestGenericTypeMethodCall()
+        {
+            var v = new ViewModel();
+            v.MyProperty = 99;
+            v.things = new List<thing>();
+            v.things.Add(new thing() { x = 10, y = 10, z = 10 });
+            v.Level2 = new VM2();
+            v.Level2.Level2String = "Level2";
+            v.Level2.Level3 = new VM3();
+            v.Level2.Level3.Level3String = "Level3";
+            var typeToFind = v.Level2.Level3.Level3String.GetType();
+            var PropertyInfo = v.GetType().GetProperty("Level2.Level3.Level3String");
+             
 
+            var h = new HtmlHelper<ViewModel>(new ViewContext(),new FakeViewDataContainer());
 
+            var Sid = h.IdFor(m => m.things[2].x);
+
+            
+            
+
+        
+        
+        }
         #region Ninject
 
         public class PageObjectViewModel : ViewModel, IInterceptor
         {
+   
 
             public void Intercept(IInvocation invocation)
             {
@@ -94,7 +271,21 @@ namespace ViewModelInheritance
                         invocation.ReturnValue = 500;
                         break;
                     case TypeCode.Object:
-                        invocation.ReturnValue = null;
+                        var tmp = invocation.Request.Method.ReturnType;
+                    
+                        if (tmp.GetInterface("IList") !=null)
+                        {
+
+                            var foo = (IList<thing>)new FakeList<thing>();
+                            System.Collections.Generic.List<thing> foo2 =  foo.ToList<thing>() ;
+                            invocation.ReturnValue = foo2;
+                        }
+                        else
+                        {
+                            invocation.ReturnValue = null;
+                        }
+                        
+                        
                         break;
                     case TypeCode.SByte:
                         break;
@@ -138,6 +329,56 @@ namespace ViewModelInheritance
         #endregion
 
 
+        public class FakeViewDataContainer : IViewDataContainer
+        {
+            private ViewDataDictionary _viewData = new ViewDataDictionary();
+            public ViewDataDictionary ViewData { get { return _viewData; } set { _viewData = value; } }
+        }
+
+
+        [Test]
+        public void CreateNameForModel()
+        {
+            // Let's start thinking about naming conventions
+            //var v = new ViewModel();
+            
+            //var vt = v.GetType();
+            //var vd = new ViewDataDictionary();
+            //var helper = CreateHtmlHelper(vd);
+            ////var html = new System.Web.Mvc.HtmlHelper<ViewModel>(new System.Web.Mvc.ViewContext() { ViewData = new System.Web.Mvc.ViewDataDictionary<ViewModel>(this._test) }, this.IVDC);
+            ////HtmlHelper<ViewModel> helper = null;
+             
+            //System.Linq.Expressions.Expression<Func<ViewModel,int>> expression = (a) => a.MyProperty;
+            //var nme = System.Web.Mvc.Html.NameExtensions.IdFor<ViewModel, int>(helper, (a) => a.MyProperty);
+
+            ////var s = System.Web.Mvc.Html.EditorExtensions.EditorFor<ViewModel, Int32>(html, expression);
+
+            //Console.Write(nme);
+        }
+
+        public static HtmlHelper CreateHtmlHelper(ViewDataDictionary vd, Stream stream = null)
+        {
+            TextWriter textWriter = new StreamWriter(stream ?? new MemoryStream());
+            Mock<ViewContext> mockViewContext = new Mock<ViewContext>(
+                new ControllerContext(
+                    new Mock<HttpContextBase>().Object,
+                    new RouteData(),
+                    new Mock<ControllerBase>().Object
+                ),
+                new Mock<IView>().Object,
+                vd,
+                new TempDataDictionary(),
+                textWriter
+            );
+            mockViewContext.Setup(vc => vc.Writer).Returns(textWriter);
+
+            Mock<IViewDataContainer> mockDataContainer = new Mock<IViewDataContainer>();
+            mockDataContainer.Setup(c => c.ViewData).Returns(vd);
+
+            return new HtmlHelper(mockViewContext.Object, mockDataContainer.Object);
+        }
+
+
     [Test]
         public void NinjectAOPTest()
         {
@@ -145,8 +386,12 @@ namespace ViewModelInheritance
             kernel.Bind<ViewModel>().To<PageObjectViewModel>().Intercept().With<PageObjectViewModel>();
             var foo = kernel.Get<ViewModel>();
             foo.MyProperty = 800;
+            var f = foo.things.Count;
             Console.WriteLine(foo.MyProperty.ToString());
             Console.WriteLine(foo.NowTime().ToString());
+
+
+
         }
 
         [Test]
@@ -173,6 +418,10 @@ namespace ViewModelInheritance
             Console.WriteLine((endtime - starttime).ToString());
 
         }
+
+        public System.Web.Mvc.ViewDataDictionary _test { get; set; }
+
+        public System.Web.Mvc.IViewDataContainer IVDC { get; set; }
     }
 
 
