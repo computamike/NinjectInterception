@@ -14,6 +14,7 @@ using System.IO;
 using System.Web;
 using System.Web.Routing;
 using System.Web.Mvc.Html;
+using System.Linq.Expressions;
 
 
 namespace ViewModelInheritance
@@ -220,17 +221,23 @@ namespace ViewModelInheritance
 
             var Sid = h.IdFor(m => m.things[2].x);
 
-            
-            
 
-        
+            StandardKernel kernel = new StandardKernel();
+            kernel.Bind<ViewModel>().To<PageObjectViewModel>().Intercept().With<PageObjectViewModel>();
+            var foo = kernel.Get<ViewModel>();
+
+         
         
         }
         #region Ninject
 
         public class PageObjectViewModel : ViewModel, IInterceptor
         {
-   
+
+            public  MvcHtmlString WIPIdFor<TModel, TProperty>( Expression<Func<TModel, TProperty>> expression)
+            {
+                return new  MvcHtmlString("blah");
+            }
 
             public void Intercept(IInvocation invocation)
             {
